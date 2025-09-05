@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# Evita que a regra se aplique a arquivos ou diretórios existentes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Regra principal para rotear as requisições
+# Ex: /api/empresas -> /api/empresas.php
+# Ex: /api/empresas/123 -> /api/empresas.php?id=123
+RewriteRule ^([a-zA-Z0-9_-]+)/?([0-9]*)/?$ $1.php?id=$2 [L,QSA]
+
+ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php

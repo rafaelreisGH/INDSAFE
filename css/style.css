@@ -1,0 +1,19 @@
+/* Adiciona um espaçamento mais confortável no corpo da página */
+body {
+    background-color: #f8f9fa;
+}
+
+/* Garante que os valores nos cards de totais se destaquem */
+.card-text.display-6 {
+    font-weight: 600 !important;
+}
+
+/* Estilo para o botão de ação na tabela (círculo verde) */
+.action-button {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}

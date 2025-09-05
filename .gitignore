@@ -1,0 +1,29 @@
+# Dependências do Composer
+/vendor/
+
+# Arquivos de configuração sensíveis
+.env
+docker-compose.override.yml
+/helpers/gerar_hash.php
+
+# Logs
+logs/
+*.log
+
+# Cache / arquivos temporários
+*.cache
+*.tmp
+*.bak
+
+# IDEs e editores
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+ConexaoDB/conexao.php
+Controllers/enviar_link.php

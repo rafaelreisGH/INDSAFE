@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Empresa - Portal da Transparência</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header class="bg-light p-3 border-bottom">
+        <div class="container-fluid d-flex align-items-center">
+            <img src="img/logo-cuiaba.png" alt="Logo" style="height: 40px;" class="me-3">
+            <h1 class="h4 mb-0">Portal da Transparência</h1>
+        </div>
+    </header>
+
+    <main class="container-fluid my-4" id="main-content">
+        <a href="index.html" class="btn btn-link text-decoration-none mb-3 ps-0">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+
+        <div class="row g-4">
+            <!-- Coluna principal -->
+            <div class="col-md-8">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0" id="header-razao-social">Carregando...</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-4">CNPJ:</dt>
+                            <dd class="col-sm-8" id="cnpj">...</dd>
+
+                            <dt class="col-sm-4">Status PSCIP:</dt>
+                            <dd class="col-sm-8" id="status-pscip">...</dd>
+
+                            <dt class="col-sm-4">Risco da Edificação:</dt>
+                            <dd class="col-sm-8" id="risco-edificacao">...</dd>
+
+                            <dt class="col-sm-4">Área Construída:</dt>
+                            <dd class="col-sm-8" id="area-construida">...</dd>
+
+                            <dt class="col-sm-4">Email Principal:</dt>
+                            <dd class="col-sm-8" id="email-contato">...</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <!-- Coluna lateral -->
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header">Responsáveis Técnicos</div>
+                    <ul class="list-group list-group-flush" id="lista-responsaveis">
+                        <li class="list-group-item">Carregando...</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <div class="card-header">Contatos na Empresa</div>
+                    <ul class="list-group list-group-flush" id="lista-contatos">
+                        <li class="list-group-item">Carregando...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- NOSSO SCRIPT -->
+    <script>
+        const API_BASE_URL = 'api';
+
+        async function loadDetalhesEmpresa() {
+            // 1. Pega o ID da empresa da URL (ex: detalhes.html?id=5)
+            const params = new URLSearchParams(window.location.search);
+            const empresaId = params.get('id');
+            const mainContent = document.getElementById('main-content');
+
+            // Se não houver ID, redireciona de volta para a página inicial
+            if (!empresaId) {
+                window.location.href = 'index.php';
+                return;
+            }
+
+            try {
+                // 2. Busca os dados da empresa específica na API
+                const response = await fetch(`${API_BASE_URL}/empresas/${empresaId}`);
+
+                if (!response.ok) {
+                    throw new Error(`Empresa não encontrada ou erro na API. Status: ${response.status}`);
+                }
+                const empresa = await response.json();
+
+                // 3. Preenche os campos com os dados recebidos
+                document.getElementById('header-razao-social').textContent = empresa.razao_social;
+                document.getElementById('cnpj').textContent = empresa.cnpj || 'Não informado';
+                document.getElementById('risco-edificacao').textContent = empresa.risco_edificacao || 'Não informado';
+                document.getElementById('area-construida').textContent = empresa.area_construida_m2 ? `${empresa.area_construida_m2} m²` : 'Não informada';
+                document.getElementById('email-contato').textContent = empresa.email_contato || 'Não informado';
+
+                // Preenche o status do PSCIP com um badge
+                let statusBadge = '';
+                if (empresa.possui_pscip === 'Possui') {
+                    statusBadge = '<span class="badge text-bg-success">Possui</span>';
+                } else if (empresa.possui_pscip === 'Não possui') {
+                    statusBadge = '<span class="badge text-bg-danger">Não Possui</span>';
+                } else {
+                    statusBadge = '<span class="badge text-bg-secondary">Não Informado</span>';
+                }
+                document.getElementById('status-pscip').innerHTML = statusBadge;
+
+                // Preenche a lista de responsáveis
+                const ulResponsaveis = document.getElementById('lista-responsaveis');
+                ulResponsaveis.innerHTML = '';
+                if (empresa.responsaveis_tecnicos && empresa.responsaveis_tecnicos.length > 0) {
+                    empresa.responsaveis_tecnicos.forEach(resp => {
+                        const li = `<li class="list-group-item">${resp.nome} (${resp.crea_cau})</li>`;
+                        ulResponsaveis.innerHTML += li;
+                    });
+                } else {
+                    ulResponsaveis.innerHTML = '<li class="list-group-item">Nenhum responsável técnico cadastrado.</li>';
+                }
+
+                // Preenche a lista de contatos
+                const ulContatos = document.getElementById('lista-contatos');
+                ulContatos.innerHTML = '';
+                if (empresa.contatos && empresa.contatos.length > 0) {
+                    empresa.contatos.forEach(contato => {
+                        const li = `<li class="list-group-item">${contato.Nome} - ${contato.setor_funcao} (${contato.telefone})</li>`;
+                        ulContatos.innerHTML += li;
+                    });
+                } else {
+                    ulContatos.innerHTML = '<li class="list-group-item">Nenhum contato cadastrado.</li>';
+                }
+
+            } catch (error) {
+                console.error("Falha ao carregar detalhes da empresa:", error);
+                mainContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h4>Erro ao carregar dados</h4>
+                        <p>Não foi possível encontrar os detalhes para a empresa solicitada. Por favor, tente novamente.</p>
+                        <a href="index.php" class="btn btn-primary">Voltar para a lista</a>
+                    </div>
+                `;
+            }
+        }
+
+        // Executa a função quando a página carregar
+        document.addEventListener('DOMContentLoaded', loadDetalhesEmpresa);
+    </script>
+</body>
+
+</html>

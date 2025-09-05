@@ -1,0 +1,27 @@
+services:
+  # Servidor Web para a aplicação (Produção)
+  web:
+    build: .
+    container_name: indsafe_prod_web
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+
+  # Banco de Dados (Produção)
+  db:
+    image: mysql:8.0
+    container_name: indsafe_prod_db
+    restart: always
+    environment:
+      # Variáveis de ambiente específicas para produção
+      MYSQL_DATABASE: ${MYSQL_DATABASE_PROD}
+      MYSQL_USER: ${MYSQL_USER_PROD}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD_PROD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_PROD}
+    volumes:
+      # Volume para persistir os dados em produção
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

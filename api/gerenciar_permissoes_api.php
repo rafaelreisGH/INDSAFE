@@ -6,10 +6,32 @@ header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 
 require_once '../ConexaoDB/conexao.php';
-$conn = Conexao::getConexao();
+require_once __DIR__ . '/../Logger/LoggerFactory.php';
+
+$logger = LoggerFactory::createLogger();
+$conn = null;
+
+try {
+    $conn = Conexao::getConexao();
+} catch (PDOException $e) {
+    // Log de erro de conexão com o banco de dados
+    $logger->error('Erro de conexão com o banco de dados', [
+        'id' => $_SESSION['id_usuario'] ?? 'N/A',
+        'usuario' => $_SESSION['nome_usuario'] ?? 'N/A',
+        'erro' => $e->getMessage()
+    ]);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro ao conectar ao banco de dados.']);
+    exit;
+}
 
 // Verificação de permissão
 if (!isset($_SESSION['permissoes']) || !in_array('gerenciar_perfis', $_SESSION['permissoes'])) {
+    // Log de aviso para acesso negado
+    $logger->warning('Tentativa de acesso negado à API de permissões', [
+        'id' => $_SESSION['id_usuario'] ?? 'N/A',
+        'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
+    ]);
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Acesso negado.']);
     exit;
@@ -17,6 +39,12 @@ if (!isset($_SESSION['permissoes']) || !in_array('gerenciar_perfis', $_SESSION['
 
 $response = ['success' => false, 'message' => 'Ação inválida.'];
 $action = $_REQUEST['action'] ?? '';
+
+$base_log_context = [
+    'action' => $action,
+    'id_usuario_logado' => $_SESSION['id_usuario'] ?? 'N/A',
+    'usuario_logado' => $_SESSION['nome_usuario'] ?? 'N/A'
+];
 
 try {
     switch ($action) {
@@ -37,22 +65,26 @@ try {
 
             $response = ['success' => true, 'perfis' => $perfis];
             http_response_code(200);
+
+            // Log de sucesso para listagem (não é uma alteração, mas uma ação bem-sucedida)
+            $logger->info('Listagem de perfis bem-sucedida', $base_log_context);
             break;
 
         case 'listar_permissoes_perfil':
             $id_perfil = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
+            $log_context = array_merge($base_log_context, ['id_perfil' => $id_perfil]);
+
             if (!$id_perfil) {
                 http_response_code(400);
                 $response['message'] = 'ID do perfil não fornecido.';
+                $logger->warning('Busca de permissoes por perfil falhou - ID não fornecido', $log_context);
                 break;
             }
 
-            // Todas
             $stmt_todas = $conn->prepare("SELECT id, nome FROM permissoes ORDER BY nome");
             $stmt_todas->execute();
             $todas_permissoes = $stmt_todas->fetchAll(PDO::FETCH_ASSOC);
 
-            // Do perfil
             $stmt_perfil = $conn->prepare("
                 SELECT p.id, p.nome 
                 FROM permissoes p
@@ -70,30 +102,36 @@ try {
                 'permissoes_do_perfil' => $permissoes_do_perfil
             ];
             http_response_code(200);
+
+            // Log de sucesso para listagem de permissões
+            $logger->info('Listagem de permissões por perfil bem-sucedida', $log_context);
             break;
 
         case 'salvar_permissoes':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 http_response_code(405);
                 $response['message'] = 'Método de requisição inválido.';
+                $logger->warning('Tentativa de salvar permissoes com método inválido', $base_log_context);
                 break;
             }
 
-            // Valida CSRF (mesmo input usado no form do modal)
             $csrf = $_POST['csrf_token'] ?? '';
             if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrf)) {
                 http_response_code(403);
                 $response['message'] = 'Token CSRF inválido.';
+                $logger->warning('Tentativa de salvar permissoes com token CSRF inválido', $base_log_context);
                 break;
             }
 
             $id_perfil = filter_input(INPUT_POST, 'id_perfil', FILTER_SANITIZE_NUMBER_INT);
             $permissoes_json = $_POST['permissoes'] ?? '[]';
             $permissoes_selecionadas = json_decode($permissoes_json, true);
+            $log_context = array_merge($base_log_context, ['id_perfil' => $id_perfil, 'permissoes' => $permissoes_selecionadas]);
 
             if (!$id_perfil || !is_array($permissoes_selecionadas)) {
                 http_response_code(400);
                 $response['message'] = 'Dados inválidos.';
+                $logger->warning('Falha ao salvar permissoes - dados inválidos', $log_context);
                 break;
             }
 
@@ -116,17 +154,25 @@ try {
             $conn->commit();
             http_response_code(200);
             $response = ['success' => true, 'message' => 'Permissões atualizadas com sucesso!'];
+
+            // Log de sucesso para a alteração
+            $logger->info('Permissões de perfil salvas com sucesso', $log_context);
             break;
 
         default:
             http_response_code(400);
             $response['message'] = 'Ação não reconhecida.';
+            $logger->warning('Ação de API não reconhecida', $base_log_context);
             break;
     }
 } catch (PDOException $e) {
-    if ($conn->inTransaction()) $conn->rollBack();
+    if ($conn && $conn->inTransaction()) $conn->rollBack();
     http_response_code(500);
     $response = ['success' => false, 'message' => 'Erro ao processar: ' . $e->getMessage()];
+    
+    // Log de erro em caso de exceção no sistema
+    $log_context = array_merge($base_log_context, ['erro' => $e->getMessage()]);
+    $logger->error('Erro PDO ao processar API de permissões', $log_context);
 }
 
 echo json_encode($response);

@@ -1,8 +1,11 @@
 <?php
 // Controllers/validar_acesso.php
+
 session_start();
 
 require_once '../ConexaoDB/conexao.php';
+require_once __DIR__ . '/../Logger/LoggerFactory.php';
+$logger = LoggerFactory::createLogger();
 $conn = Conexao::getConexao();
 
 // Array de mensagens para armazenar erros
@@ -13,6 +16,7 @@ if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['c
     $mensagens[] = "Ocorreu um erro de segurança. Tente fazer login novamente.";
     $_SESSION['mensagens'] = $mensagens;
     $_SESSION['mensagem_tipo'] = 'danger'; // Define o tipo de mensagem para o login.php
+    $logger->warning('Tentativa de login com token CSRF inválido.');
     header('Location:../Views/login.php');
     exit;
 }
@@ -25,15 +29,28 @@ if (empty($cpf) || empty($senha_original)) {
     $mensagens[] = "Por favor, preencha todos os campos.";
     $_SESSION['mensagens'] = $mensagens;
     $_SESSION['mensagem_tipo'] = 'danger'; // Define o tipo de mensagem
+    $logger->warning('Tentativa de login com campos vazios.', ['cpf' => $cpf]);
     header('Location:../Views/login.php');
     exit;
 }
 
 // 3. Busca o usuário no banco de dados pelo CPF
-$stmt = $conn->prepare("SELECT id, nome, email, cpf, senha_hash, ativo FROM usuarios WHERE cpf = :cpf LIMIT 1");
-$stmt->bindParam(':cpf', $cpf);
-$stmt->execute();
-$usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+try {
+    $stmt = $conn->prepare("SELECT id, nome, email, cpf, senha_hash, ativo, perfil_id FROM usuarios WHERE cpf = :cpf LIMIT 1");
+    $stmt->bindParam(':cpf', $cpf);
+    $stmt->execute();
+    $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $mensagens[] = "Ocorreu um erro interno. Por favor, tente novamente mais tarde.";
+    $_SESSION['mensagens'] = $mensagens;
+    $_SESSION['mensagem_tipo'] = 'danger';
+    $logger->error('Erro no banco de dados ao buscar usuário para login.', [
+        'cpf' => $cpf,
+        'erro' => $e->getMessage()
+    ]);
+    header('Location:../Views/login.php');
+    exit;
+}
 
 if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
 
@@ -42,6 +59,11 @@ if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
         $mensagens[] = "Sua conta ainda não foi ativada. Por favor, aguarde a aprovação do administrador.";
         $_SESSION['mensagens'] = $mensagens;
         $_SESSION['mensagem_tipo'] = 'danger'; // Define o tipo de mensagem
+        $logger->warning('Tentativa de login de conta inativa.', [
+            'id' => $usuario['id'],
+            'nome' => $usuario['nome'],
+            'email' => $usuario['email']
+        ]);
         header('Location:../Views/login.php');
         exit;
     }
@@ -49,16 +71,29 @@ if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
     // Login validado. Agora, vamos buscar as permissões.
 
     // 5. Busca as permissões do usuário no banco de dados
-    $stmt_permissoes = $conn->prepare("
-        SELECT p.nome
-        FROM permissoes AS p
-        JOIN perfil_permissoes AS pp ON p.id = pp.permissao_id
-        JOIN usuario_perfis AS up ON pp.perfil_id = up.perfil_id
-        WHERE up.usuario_id = :id_usuario
-    ");
-    $stmt_permissoes->bindParam(':id_usuario', $usuario['id']);
-    $stmt_permissoes->execute();
-    $permissoes = $stmt_permissoes->fetchAll(PDO::FETCH_COLUMN, 0);
+    try {
+        $stmt_permissoes = $conn->prepare("
+            SELECT p.nome
+            FROM permissoes AS p
+            JOIN perfil_permissoes AS pp ON p.id = pp.permissao_id
+            JOIN usuario_perfis AS up ON pp.perfil_id = up.perfil_id
+            WHERE up.usuario_id = :id_usuario
+        ");
+        $stmt_permissoes->bindParam(':id_usuario', $usuario['id']);
+        $stmt_permissoes->execute();
+        $permissoes = $stmt_permissoes->fetchAll(PDO::FETCH_COLUMN, 0);
+    } catch (PDOException $e) {
+        $mensagens[] = "Ocorreu um erro interno. Por favor, tente novamente mais tarde.";
+        $_SESSION['mensagens'] = $mensagens;
+        $_SESSION['mensagem_tipo'] = 'danger';
+        $logger->error('Erro no banco de dados ao buscar permissões do usuário.', [
+            'id' => $usuario['id'],
+            'nome' => $usuario['nome'],
+            'erro' => $e->getMessage()
+        ]);
+        header('Location:../Views/login.php');
+        exit;
+    }
 
     // 6. Armazena os dados do usuário e as permissões na sessão
     $_SESSION['id_usuario'] = $usuario['id'];
@@ -72,13 +107,29 @@ if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
 
     // Limpa o token CSRF da sessão após o uso
     unset($_SESSION['csrf_token']);
-
+    
     // 7. LÓGICA DE REDIRECIONAMENTO POR PERMISSÃO:
     // Se o usuário possui a permissão de gerenciar usuários, redireciona para a página de admin.
     if (in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
+        // Log de sucesso
+        $logger->info('Login de administrador bem-sucedido.', [
+            'id' => $usuario['id'],
+            'nome' => $usuario['nome'],
+            'email' => $usuario['email'],
+            'perfil_id' => $usuario['perfil_id'],
+            'permissoes' => $permissoes
+        ]);
         header('Location:../Views/gerenciar_usuarios.php');
     } else {
         // Caso contrário, redireciona para o painel do usuário.
+        // Log de sucesso
+        $logger->info('Login de usuário bem-sucedido.', [
+            'id' => $usuario['id'],
+            'nome' => $usuario['nome'],
+            'email' => $usuario['email'],
+            'perfil_id' => $usuario['perfil_id'],
+            'permissoes' => $permissoes
+        ]);
         header('Location:../Views/home_usuario.php');
     }
     exit;
@@ -88,6 +139,9 @@ if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
     $mensagens[] = "CPF ou senha inválidos. Tente novamente.";
     $_SESSION['mensagens'] = $mensagens;
     $_SESSION['mensagem_tipo'] = 'danger'; // Define o tipo de mensagem
+    $logger->warning('Tentativa de login com CPF ou senha inválidos.', [
+        'cpf' => $cpf
+    ]);
     header('Location:../Views/login.php');
     exit;
 }

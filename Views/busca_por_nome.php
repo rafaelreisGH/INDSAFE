@@ -1,7 +1,7 @@
 <?php
 ///Views/busca_por_nome.php
 include_once '../helpers/header.php';
-include_once '../helpers/header_user.php';
+include_once '../helpers/header_gestor.php';
 ?>
 
 <main class="container-fluid my-4 d-flex flex-column align-items-center">

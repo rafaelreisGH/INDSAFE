@@ -13,6 +13,7 @@ try {
     $logger = LoggerFactory::createLogger();
 
     if (!$db) {
+        // Log de erro de conexão com o banco de dados
         $logger->error('Erro na conexão com o banco de dados', [
             'id' => $_SESSION['id_usuario'] ?? 'N/A',
             'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
@@ -53,13 +54,14 @@ try {
     $empresa_ids = $stmt_ids->fetchAll(PDO::FETCH_COLUMN);
 
     if (empty($empresa_ids)) {
-        $logger->info('Busca por maquinário não encontrou resultados', $log_context);
+        // Conforme a solicitação, não vamos mais logar quando a busca não encontrar resultados.
+        // Apenas enviamos a resposta para o frontend.
         http_response_code(404);
         echo json_encode(["success" => false, "message" => "Nenhuma empresa encontrada com este maquinário.", "data" => []]);
         exit();
     }
 
-    // Log de sucesso
+    // Log de sucesso da busca, pois encontramos resultados no banco
     $log_context['resultado_busca'] = 'Sucesso';
     $logger->info('Busca por maquinário bem-sucedida', $log_context);
 
@@ -94,7 +96,7 @@ try {
     echo json_encode(["success" => true, "data" => $empresas_encontradas]);
 
 } catch (PDOException $e) {
-    // Log de erro
+    // Log de erro no banco de dados, que é um problema de sistema
     $logger->error('Erro na busca por maquinário', [
         'termo_busca' => $maquinario,
         'id' => $_SESSION['id_usuario'] ?? 'N/A',
@@ -105,4 +107,3 @@ try {
     echo json_encode(["success" => false, "message" => "Erro no banco de dados: " . $e->getMessage()]);
     exit();
 }
-?>

@@ -3,6 +3,8 @@
 session_start();
 
 require_once '../ConexaoDB/conexao.php';
+require_once __DIR__ . '/../Logger/LoggerFactory.php';
+$logger = LoggerFactory::createLogger();
 $conn = Conexao::getConexao();
 
 // Função de validação de senha
@@ -11,6 +13,7 @@ require_once '../Controllers/validar_senha.php';
 // Validação de token CSRF para evitar ataques
 if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
     // Redireciona em caso de token inválido
+    $logger->warning('Tentativa de registro de usuário com token CSRF inválido.');
     header('Location:../Views/inscrevase.php');
     exit;
 }
@@ -91,8 +94,12 @@ try {
 } catch (PDOException $e) {
     // Em caso de erro no banco de dados
     $erros[] = "Ocorreu um erro interno. Por favor, tente novamente mais tarde.";
-    // Opcional: Logar o erro completo para debug
-    error_log("Erro no registro de usuário: " . $e->getMessage());
+    
+    $logger->error('Erro no banco de dados durante a validação de novo usuário.', [
+        'nome' => $nome,
+        'email' => $email,
+        'erro' => $e->getMessage()
+    ]);
 }
 
 // Redireciona com os erros, se houver
@@ -119,11 +126,21 @@ try {
     $stmt->bindValue(':ativo', 0); // Bloqueado até aprovação do admin
 
     if ($stmt->execute()) {
+        // Log de sucesso
+        $logger->info('Novo usuário registrado com sucesso.', [
+            'nome' => $nome,
+            'email' => $email
+        ]);
         header('Location:../Views/recem_cadastrado.php');
         exit;
     } else {
         $erros[] = "Ocorreu um erro inesperado ao salvar os dados. Tente novamente mais tarde.";
         $_SESSION['mensagens'] = $erros;
+        $logger->error('Erro inesperado ao salvar os dados do novo usuário.', [
+            'nome' => $nome,
+            'email' => $email,
+            'erro' => 'Erro na execução da query de inserção.'
+        ]);
         header('Location:../Views/inscrevase.php');
         exit;
     }
@@ -132,6 +149,14 @@ try {
     // Em caso de erro no insert
     $erros[] = "Ocorreu um erro inesperado ao salvar os dados. Tente novamente mais tarde.";
     $_SESSION['mensagens'] = $erros;
+    
+    // Log de insucesso
+    $logger->error('Erro no banco de dados ao tentar registrar novo usuário.', [
+        'nome' => $nome,
+        'email' => $email,
+        'erro' => $e->getMessage()
+    ]);
+
     header('Location:../Views/inscrevase.php');
     exit;
 }

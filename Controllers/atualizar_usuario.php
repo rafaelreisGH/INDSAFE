@@ -1,8 +1,10 @@
 <?php
-// Controllers/atualizar_usuario.php
-session_start();
+session_start(); // Inicia a sessão
 
 require_once '../ConexaoDB/conexao.php';
+require_once __DIR__ . '/../Logger/LoggerFactory.php';
+
+$logger = LoggerFactory::createLogger();
 $conn = Conexao::getConexao();
 
 // Array para mensagens de erro
@@ -48,18 +50,32 @@ try {
     // 6. Atualiza as variáveis de sessão
     $_SESSION['nome_usuario'] = $nome;
     $_SESSION['email_usuario'] = $email;
-    
+
     $mensagens[] = "Suas informações foram atualizadas com sucesso.";
     $_SESSION['mensagens'] = $mensagens;
     $_SESSION['mensagem_tipo'] = 'success';
-    
+
+    // Log de sucesso
+    $logger->info('Informações de usuário atualizadas com sucesso.', [
+        'quem_alterou_id' => $_SESSION['id_usuario'],
+        'quem_alterou_usuario' => $_SESSION['nome_usuario'],
+        'usuario_sujeito_id' => $id_usuario
+    ]);
+
     header('Location:../Views/painel_do_usuario.php');
     exit;
-
 } catch (PDOException $e) {
     $mensagens[] = "Erro ao atualizar informações: " . $e->getMessage();
     $_SESSION['mensagens'] = $mensagens;
     $_SESSION['mensagem_tipo'] = 'danger';
+
+    // Log de erro
+    $logger->error('Erro ao tentar atualizar informações do usuário.', [
+        'quem_alterou_id' => $_SESSION['id_usuario'],
+        'quem_alterou_usuario' => $_SESSION['nome_usuario'],
+        'erro' => $e->getMessage()
+    ]);
+
     header('Location:../Views/painel_do_usuario.php');
     exit;
 }

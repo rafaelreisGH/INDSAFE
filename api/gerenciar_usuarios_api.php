@@ -4,18 +4,32 @@ session_start();
 header('Content-Type: application/json; charset=UTF-8');
 
 include_once '../ConexaoDB/conexao.php';
+require_once __DIR__ . '/../Logger/LoggerFactory.php';
+
+$logger = LoggerFactory::createLogger();
+$db = null;
 
 // Verifica se o usuário tem a permissão 'gerenciar_usuarios'
 if (!isset($_SESSION['logado']) || !in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
+    $logger->warning('Acesso negado à API de gerenciamento de usuários', [
+        'id' => $_SESSION['id_usuario'] ?? 'N/A',
+        'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
+    ]);
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Acesso negado.']);
     exit();
 }
 
+$base_log_context = [
+    'id_usuario_logado' => $_SESSION['id_usuario'] ?? 'N/A',
+    'usuario_logado' => $_SESSION['nome_usuario'] ?? 'N/A'
+];
+
 try {
     $db = Conexao::getConexao();
 
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
+    $log_context = array_merge($base_log_context, ['action' => $action]);
 
     if ($action === 'listar') {
         // Parâmetros de paginação e filtro
@@ -59,18 +73,24 @@ try {
             'usuarios' => $usuarios,
             'total_usuarios' => $totalUsuarios
         ]);
-        
+
+        $logger->info('Listagem de usuários bem-sucedida', $log_context);
     } elseif ($action === 'listar_perfis') {
         $query = "SELECT id, nome FROM perfis ORDER BY nome ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         $perfis = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(['success' => true, 'perfis' => $perfis]);
+
+        $logger->info('Listagem de perfis para edição bem-sucedida', $log_context);
     } elseif ($action === 'toggle_status') {
         $id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
         $status = filter_input(INPUT_GET, 'status', FILTER_SANITIZE_NUMBER_INT);
+        $log_context['target_user_id'] = $id;
+        $log_context['status_novo'] = $status;
 
         if (!$id || !is_numeric($status)) {
+            $logger->warning('Falha ao alternar status do usuário - parâmetros inválidos', $log_context);
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Parâmetros inválidos.']);
             exit();
@@ -84,11 +104,16 @@ try {
 
         $message = $status == 1 ? 'Usuário ativado com sucesso.' : 'Usuário desativado com sucesso.';
         echo json_encode(['success' => true, 'message' => $message]);
+
+        $logger->info('Status de usuário alterado com sucesso', $log_context);
     } elseif ($action === 'editar_perfil') {
         $id = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT);
         $perfil_id = filter_input(INPUT_POST, 'perfil_id', FILTER_SANITIZE_NUMBER_INT);
+        $log_context['target_user_id'] = $id;
+        $log_context['novo_perfil_id'] = $perfil_id;
 
         if (!$id || !$perfil_id) {
+            $logger->warning('Falha ao editar perfil de usuário - parâmetros inválidos', $log_context);
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Parâmetros inválidos.']);
             exit();
@@ -111,14 +136,20 @@ try {
         $db->commit();
 
         echo json_encode(['success' => true, 'message' => 'Perfil do usuário atualizado com sucesso.']);
+
+        $logger->info('Perfil de usuário editado com sucesso', $log_context);
     } else {
+        $logger->warning('Ação não especificada na API de gerenciamento de usuários', $base_log_context);
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Ação não especificada.']);
     }
 } catch (PDOException $e) {
-    if ($db->inTransaction()) {
+    if ($db && $db->inTransaction()) {
         $db->rollBack();
     }
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro no banco de dados: ' . $e->getMessage()]);
+
+    $log_context = array_merge($base_log_context, ['erro' => $e->getMessage()]);
+    $logger->error('Erro PDO na API de gerenciamento de usuários', $log_context);
 }

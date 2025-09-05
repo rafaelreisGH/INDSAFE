@@ -13,6 +13,7 @@ try {
     $logger = LoggerFactory::createLogger();
 
     if (!$db) {
+        // Log de erro de conexão com o banco de dados
         $logger->error('Erro na conexão com o banco de dados', [
             'id' => $_SESSION['id_usuario'] ?? 'N/A',
             'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
@@ -47,7 +48,8 @@ try {
     $empresa = $stmt_empresa->fetch(PDO::FETCH_ASSOC);
 
     if (!$empresa) {
-        $logger->info('Busca por info. técnica não encontrou resultados', $log_context);
+        // Conforme a solicitação, não vamos mais logar quando a busca não encontrar resultados.
+        // Apenas enviamos a resposta para o frontend.
         http_response_code(404); // Not Found
         echo json_encode(["success" => false, "message" => "Nenhuma empresa encontrada com este nome."]);
         exit();

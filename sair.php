@@ -5,12 +5,12 @@ session_start(); // Inicia a sessão
 require_once __DIR__ . '/Logger/LoggerFactory.php';
 $logger = LoggerFactory::createLogger();
 
-if (isset($_SESSION['id'])) {
+// Apenas registra o log de saída se a sessão do usuário estiver ativa
+if (isset($_SESSION['id_usuario'])) {
     $logger->info('Usuário saiu do sistema', [
-        'id' => $_SESSION['id'],
-        'usuario' => $_SESSION['nome'],
-        'email' => $_SESSION['email'],
-        'perfil' => $_SESSION['nivel_de_acesso']
+        'id' => $_SESSION['id_usuario'],
+        'usuario' => $_SESSION['nome_usuario'],
+        'email' => $_SESSION['email_usuario']
     ]);
 }
 

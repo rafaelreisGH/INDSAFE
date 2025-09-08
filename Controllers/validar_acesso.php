@@ -117,29 +117,33 @@ if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
     unset($_SESSION['csrf_token']);
 
     // 7. LÓGICA DE REDIRECIONAMENTO POR PERMISSÃO:
-    // Se o usuário possui a permissão de gerenciar usuários, redireciona para a página de admin.
-    if (in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
-        // Log de sucesso
-        $logger->info('Login de administrador bem-sucedido.', [
-            'id' => $usuario['id'],
-            'nome' => $usuario['nome'],
-            'email' => $usuario['email'],
-            'perfil_id' => $perfil_id,
-            'permissoes' => $permissoes
-        ]);
-        header('Location:../Views/gerenciar_usuarios.php');
-    } else {
-        // Caso contrário, redireciona para o painel do usuário.
-        // Log de sucesso
-        $logger->info('Login de usuário bem-sucedido.', [
-            'id' => $usuario['id'],
-            'nome' => $usuario['nome'],
-            'email' => $usuario['email'],
-            'perfil_id' => $perfil_id,
-            'permissoes' => $permissoes
-        ]);
-        header('Location:../Views/home_usuario.php');
+    // Usa um array para mapear permissões para páginas de redirecionamento, priorizando a mais específica.
+    $redirecionamentos = [
+        'gerenciar_usuarios' => '../Views/gerenciar_usuarios.php',
+        'editar_empresa' => '../Views/home_empresa.php'
+    ];
+
+    $redirect_url = '../Views/home_usuario.php'; // URL padrão, caso nenhuma permissão específica seja encontrada
+    $log_message = 'Login de usuário bem-sucedido.';
+
+    foreach ($redirecionamentos as $permissao => $url) {
+        if (in_array($permissao, $_SESSION['permissoes'])) {
+            $redirect_url = $url;
+            $log_message = "Login de usuário com permissão de '{$permissao}' bem-sucedido.";
+            break; // Redireciona para a primeira permissão que encontrar.
+        }
     }
+
+    // Log de sucesso
+    $logger->info($log_message, [
+        'id' => $usuario['id'],
+        'nome' => $usuario['nome'],
+        'email' => $usuario['email'],
+        'perfil_id' => $perfil_id,
+        'permissoes' => $permissoes
+    ]);
+
+    header("Location:{$redirect_url}");
     exit();
 } else {
     // 8. Caso o CPF ou a senha estejam incorretos

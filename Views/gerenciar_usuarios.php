@@ -1,12 +1,15 @@
 <?php
 // Views/gerenciar_usuarios.php
-include_once '../helpers/header_admin.php';
-
-// Assumindo que a permissão para gerenciar usuários é 'gerenciar_usuarios'
+session_start();
+// A verificação de permissão deve ser a primeira coisa a ser feita,
+// antes de qualquer output.
 if (!in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
     header('Location: ../Views/acesso_restrito.php');
     exit();
 }
+
+// Agora, com a permissão verificada, podemos incluir o cabeçalho.
+include_once '../helpers/header_admin.php';
 ?>
 
 <main class="container-fluid my-4 d-flex flex-column align-items-center">

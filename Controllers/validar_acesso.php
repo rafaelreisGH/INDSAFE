@@ -119,8 +119,9 @@ if ($usuario && password_verify($senha_original, $usuario['senha_hash'])) {
     // 7. LÓGICA DE REDIRECIONAMENTO POR PERMISSÃO:
     // Usa um array para mapear permissões para páginas de redirecionamento, priorizando a mais específica.
     $redirecionamentos = [
-        'gerenciar_usuarios' => '../Views/gerenciar_usuarios.php',
-        'editar_empresa' => '../Views/home_empresa.php'
+        'gerenciar_usuarios' => '../Views/gerenciar_usuarios.php', //admin
+        'buscar_empresas' => '../Views/home_gestor.php', //gestor
+        'editar_empresa' => '../Views/home_empresa.php' //empresa
     ];
 
     $redirect_url = '../Views/home_usuario.php'; // URL padrão, caso nenhuma permissão específica seja encontrada

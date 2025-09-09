@@ -18,9 +18,7 @@ if (isset($_SESSION['mensagens'])) {
     unset($_SESSION['mensagens']);
     unset($_SESSION['mensagem_tipo']);
 }
-
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -178,11 +176,13 @@ if (isset($_SESSION['mensagens'])) {
                 </div>
             </div>
         </div>
-        
+
         <div class="p-3 border-bottom">
-            <div class="btn-group" role="group" aria-label="Basic outlined example">
-                <a class="btn btn-outline-danger" href="../Views/gerenciar_usuarios.php" role="button">Usuários</a>
-                <a class="btn btn-outline-danger" href="../Views/gerenciar_permissoes.php" role="button">Perfis</a>
+            <div class="d-flex justify-content-center">
+                <div class="btn-group" role="group" aria-label="Basic outlined example">
+                    <a class="btn btn-outline-danger" href="../Views/gerenciar_usuarios.php" role="button">Usuários</a>
+                    <a class="btn btn-outline-danger" href="../Views/gerenciar_permissoes.php" role="button">Permissões por perfil</a>
+                    <a class="btn btn-outline-danger" href="../Views/gerenciar_vinculos.php" role="button">Gerenciar Vínculos</a>
+                </div>
             </div>
         </div>
-        

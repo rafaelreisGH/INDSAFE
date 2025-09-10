@@ -3,12 +3,18 @@ header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
 include_once '../ConexaoDB/conexao.php';
+require_once __DIR__ . '/../Logger/LoggerFactory.php';
 
 try {
     $database = new Conexao();
     $db = $database->getConexao();
+    $logger = LoggerFactory::createLogger();
 
     if (!$db) {
+        $logger->error('Erro na conexão com o banco de dados', [
+            'id' => $_SESSION['id_usuario'] ?? 'N/A',
+            'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
+        ]);
         http_response_code(500);
         echo json_encode(["success" => false, "message" => "Não foi possível conectar ao banco de dados."]);
         exit();
@@ -17,6 +23,10 @@ try {
     $recurso_id = isset($_GET['recurso_id']) ? (int)trim($_GET['recurso_id']) : null;
 
     if (empty($recurso_id)) {
+        $logger->warning('Busca por recurso falhou - ID de recurso vazio', [
+            'id' => $_SESSION['id_usuario'] ?? 'N/A',
+            'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
+        ]);
         http_response_code(400); // Bad Request
         echo json_encode(["success" => false, "message" => "O ID do recurso não pode ser vazio."]);
         exit();
@@ -27,8 +37,8 @@ try {
     $stmt_recurso = $db->prepare($query_recurso);
     $stmt_recurso->bindParam(':id', $recurso_id, PDO::PARAM_INT);
     $stmt_recurso->execute();
-    $recurso_nome = $stmt_recurso->fetch(PDO::FETCH_ASSOC);
-    $recurso_nome = $recurso_nome ? $recurso_nome['descricao'] : 'Não informado';
+    $recurso_nome_from_db = $stmt_recurso->fetch(PDO::FETCH_ASSOC);
+    $recurso_nome = $recurso_nome_from_db ? $recurso_nome_from_db['descricao'] : 'Não informado';
 
     // Busca os IDs das empresas que possuem o recurso
     $query_ids = "SELECT empresa_id FROM empresa_recursos WHERE recurso_id = :recurso_id";
@@ -76,17 +86,15 @@ try {
     http_response_code(200);
     echo json_encode(["success" => true, "data" => $empresas_encontradas]);
 
-    // Log de sucesso
     $logger->info('Consulta por recurso realizada com sucesso', [
-        'termo_busca' => $recurso_nome ?? 'ID não encontrado',
+        'termo_busca' => $recurso_nome,
         'id' => $_SESSION['id_usuario'] ?? 'N/A',
         'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
     ]);
 
 } catch (PDOException $e) {
-    // Log de erro
     $logger->error('Erro na busca por recurso', [
-        'termo_busca' => $recurso_nome ?? 'ID não encontrado',
+        'termo_busca' => $recurso_id,
         'id' => $_SESSION['id_usuario'] ?? 'N/A',
         'usuario' => $_SESSION['nome_usuario'] ?? 'N/A',
         'erro' => $e->getMessage()

@@ -11,8 +11,7 @@ include_once '../helpers/header_gestor.php';
             <select class="form-select" id="recurso-select">
                 <option selected disabled>Selecione o recurso</option>
                 <option value="1">Água Armazenada</option>
-                <!-- <option value="2">Empilhadeira</option> -->
-                <option value="3">Líquido Gerador de Espuma(LGE)</option>
+                <option value="2">Líquido Gerador de Espuma(LGE)</option>
             </select>
             <button class="btn btn-outline-secondary" type="button" id="search-button">Buscar</button>
         </div>
@@ -34,7 +33,6 @@ include_once '../helpers/header_gestor.php';
     async function buscarEmpresas() {
         const selectElement = document.getElementById('recurso-select');
         const recursoId = selectElement.value;
-        const recursoNome = selectElement.options[selectElement.selectedIndex].text;
         const alertsContainer = document.getElementById('alerts-container');
         const resultadosContainer = document.getElementById('resultados-container');
 
@@ -47,13 +45,16 @@ include_once '../helpers/header_gestor.php';
         }
 
         try {
+            // Envia o ID do recurso para o backend
             const response = await fetch(`../api/busca_recurso.php?recurso_id=${encodeURIComponent(recursoId)}`);
             const result = await response.json();
 
             if (result.success) {
                 if (result.data.length > 0) {
-                    displayEmpresasDetalhes(result.data, recursoNome);
+                    // Passa a lista de empresas e o nome do recurso retornado pela API
+                    displayEmpresasDetalhes(result.data);
                 } else {
+                    const recursoNome = selectElement.options[selectElement.selectedIndex].text;
                     showAlert('warning', `Nenhuma empresa encontrada com o recurso "${recursoNome}".`);
                 }
             } else {
@@ -69,15 +70,15 @@ include_once '../helpers/header_gestor.php';
     function showAlert(type, message) {
         const alertsContainer = document.getElementById('alerts-container');
         const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
         alertsContainer.innerHTML = alertHtml;
     }
 
-    function displayEmpresasDetalhes(empresas, recursoNome) {
+    function displayEmpresasDetalhes(empresas) {
         const resultadosContainer = document.getElementById('resultados-container');
         let allHtmlContent = '';
 
@@ -114,6 +115,9 @@ include_once '../helpers/header_gestor.php';
             } else {
                 contatosList = `<li class="list-group-item">Nenhum contato cadastrado.</li>`;
             }
+            
+            // Usa o nome do recurso retornado pelo backend
+            const recursoNome = empresa.recurso_nome || 'Não informado';
             
             const htmlContent = `
                 <div class="row g-4 mb-4">

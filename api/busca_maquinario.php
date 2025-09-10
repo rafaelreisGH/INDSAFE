@@ -13,7 +13,6 @@ try {
     $logger = LoggerFactory::createLogger();
 
     if (!$db) {
-        // Log de erro de conexão com o banco de dados
         $logger->error('Erro na conexão com o banco de dados', [
             'id' => $_SESSION['id_usuario'] ?? 'N/A',
             'usuario' => $_SESSION['nome_usuario'] ?? 'N/A'
@@ -23,45 +22,37 @@ try {
         exit();
     }
 
-    $maquinario = isset($_GET['maquinario']) ? trim($_GET['maquinario']) : null;
+    // O valor de GET['maquinario'] agora é o ID do recurso
+    $recurso_id = isset($_GET['maquinario']) ? trim($_GET['maquinario']) : null;
 
     $log_context = [
         'tipo_busca' => 'Busca por Maquinário',
-        'termo_busca' => $maquinario,
+        'recurso_id' => $recurso_id,
         'id' => $_SESSION['id_usuario'] ?? 'N/A',
         'usuario' => $_SESSION['nome_usuario'] ?? 'N/A',
     ];
 
-    if (empty($maquinario) || $maquinario === 'Selecione o maquinário') {
-        $logger->warning('Busca por maquinário falhou - termo vazio', $log_context);
+    if (empty($recurso_id)) {
+        $logger->warning('Busca por maquinário falhou - ID de recurso vazio', $log_context);
         http_response_code(400);
-        echo json_encode(["success" => false, "message" => "O maquinário não pode ser vazio."]);
+        echo json_encode(["success" => false, "message" => "O ID do maquinário não pode ser vazio."]);
         exit();
     }
-
-    // Lógica para determinar a busca com base no valor do maquinário
-    if ($maquinario === 'Empilhadeira') {
-        $query_ids = "SELECT empresa_id FROM empresa_recursos WHERE recurso_id = 3";
-        $stmt_ids = $db->prepare($query_ids);
-        $stmt_ids->execute();
-    } else {
-        $query_ids = "SELECT empresa_id FROM empresa_recursos WHERE recurso_id = 4 AND detalhes_adicionais = :maquinario";
-        $stmt_ids = $db->prepare($query_ids);
-        $stmt_ids->bindParam(':maquinario', $maquinario);
-        $stmt_ids->execute();
-    }
-
+    
+    // Agora a busca é única e direta, sem a necessidade de lógicas condicionais
+    $query_ids = "SELECT empresa_id FROM empresa_recursos WHERE recurso_id = :recurso_id";
+    $stmt_ids = $db->prepare($query_ids);
+    $stmt_ids->bindParam(':recurso_id', $recurso_id, PDO::PARAM_INT); // Bind com PDO::PARAM_INT, pois é um ID
+    $stmt_ids->execute();
+    
     $empresa_ids = $stmt_ids->fetchAll(PDO::FETCH_COLUMN);
 
     if (empty($empresa_ids)) {
-        // Conforme a solicitação, não vamos mais logar quando a busca não encontrar resultados.
-        // Apenas enviamos a resposta para o frontend.
         http_response_code(404);
         echo json_encode(["success" => false, "message" => "Nenhuma empresa encontrada com este maquinário.", "data" => []]);
         exit();
     }
 
-    // Log de sucesso da busca, pois encontramos resultados no banco
     $log_context['resultado_busca'] = 'Sucesso';
     $logger->info('Busca por maquinário bem-sucedida', $log_context);
 
@@ -96,9 +87,8 @@ try {
     echo json_encode(["success" => true, "data" => $empresas_encontradas]);
 
 } catch (PDOException $e) {
-    // Log de erro no banco de dados, que é um problema de sistema
     $logger->error('Erro na busca por maquinário', [
-        'termo_busca' => $maquinario,
+        'termo_busca' => $recurso_id,
         'id' => $_SESSION['id_usuario'] ?? 'N/A',
         'usuario' => $_SESSION['nome_usuario'] ?? 'N/A',
         'erro' => $e->getMessage()

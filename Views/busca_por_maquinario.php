@@ -10,15 +10,13 @@ include_once '../helpers/header_gestor.php';
             <span class="input-group-text" id="basic-addon1">Maquinário</span>
             <select class="form-select" id="maquinario-select">
                 <option selected disabled>Selecione o maquinário</option>
-                <!-- <option value="Água Armazenada">Água Armazenada</option> -->
-                <option value="Empilhadeira">Empilhadeira</option>
-                <!-- <option value="Líquido Gerador de Espuma(LGE)">Líquido Gerador de Espuma(LGE)</option> -->
-                <option value="BobCat">BobCat</option>
-                <option value="Caminhão Munck">Caminhão Munck</option>
-                <option value="Caminhão Pipa">Caminhão Pipa</option>
-                <option value="Escavadeira hidráulica">Escavadeira hidráulica</option>
-                <option value="Pá-carregadeira">Pá-carregadeira</option>
-                <option value="Retroescavadeira">Retroescavadeira</option>
+                <option value="3">Empilhadeira</option>
+                <option value="5">BobCat</option>
+                <option value="6">Caminhão Munck</option>
+                <option value="7">Caminhão Pipa</option>
+                <option value="8">Escavadeira hidráulica</option>
+                <option value="9">Pá-carregadeira</option>
+                <option value="10">Retroescavadeira</option>
             </select>
             <button class="btn btn-outline-secondary" type="button" id="search-button">Buscar</button>
         </div>
@@ -39,27 +37,30 @@ include_once '../helpers/header_gestor.php';
 
     async function buscarEmpresas() {
         const selectElement = document.getElementById('maquinario-select');
-        const maquinario = selectElement.value;
+        const maquinarioId = selectElement.value;
+        const maquinarioNome = selectElement.options[selectElement.selectedIndex].text;
         const alertsContainer = document.getElementById('alerts-container');
         const resultadosContainer = document.getElementById('resultados-container');
 
         alertsContainer.innerHTML = '';
         resultadosContainer.innerHTML = '';
 
-        if (maquinario === 'Selecione o maquinário') {
+        if (maquinarioId === 'Selecione o maquinário') {
             showAlert('danger', 'Por favor, selecione um maquinário para a busca.');
             return;
         }
 
         try {
-            const response = await fetch(`../api/busca_maquinario.php?maquinario=${encodeURIComponent(maquinario)}`);
+            // AQUI ESTÁ A MUDANÇA: enviando o ID para o backend
+            const response = await fetch(`../api/busca_maquinario.php?maquinario=${encodeURIComponent(maquinarioId)}`);
             const result = await response.json();
 
             if (result.success) {
                 if (result.data.length > 0) {
-                    displayEmpresasDetalhes(result.data, maquinario);
+                    // AQUI ESTÁ A MUDANÇA: passando o NOME para a função de exibição
+                    displayEmpresasDetalhes(result.data, maquinarioNome);
                 } else {
-                    showAlert('warning', `Nenhuma empresa encontrada com o maquinário "${maquinario}".`);
+                    showAlert('warning', `Nenhuma empresa encontrada com o maquinário "${maquinarioNome}".`);
                 }
             } else {
                 showAlert('warning', result.message);
@@ -74,11 +75,11 @@ include_once '../helpers/header_gestor.php';
     function showAlert(type, message) {
         const alertsContainer = document.getElementById('alerts-container');
         const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
         alertsContainer.innerHTML = alertHtml;
     }
 
@@ -119,7 +120,7 @@ include_once '../helpers/header_gestor.php';
             } else {
                 contatosList = `<li class="list-group-item">Nenhum contato cadastrado.</li>`;
             }
-            
+
             const htmlContent = `
                 <div class="row g-4 mb-4">
                     <div class="col-md-8">

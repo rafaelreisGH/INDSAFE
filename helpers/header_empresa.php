@@ -4,6 +4,7 @@
                 <a class="btn btn-outline-danger" href="../Views/home_empresa.php" role="button">Home</a>
                 <a class="btn btn-outline-danger" href="../Views/painel_empresa.php" role="button">Painel da empresa</a>
                 <a class="btn btn-outline-danger" href="../Views/painel_empresa_recursos.php" role="button">Recursos/Maquinários</a>
+                <a class="btn btn-outline-danger" href="../Views/painel_empresa_contatos.php" role="button">Contatos</a>
             </div>
 
         </div>

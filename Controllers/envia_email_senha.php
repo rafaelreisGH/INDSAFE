@@ -13,15 +13,21 @@ require '../vendor/autoload.php';
 $mail = new PHPMailer(true);
 
 try {
-	//Server settings
-	//$mail->SMTPDebug = SMTP::DEBUG_SERVER; //Enable verbose debug output
-	$mail->isSMTP(); //Send using SMTP
-	$mail->Host       = 'smtp.gmail.com'; //Set the SMTP server to send through
-	$mail->SMTPAuth   = true; //Enable SMTP authentication
-	$mail->Username   = 'sapcbmmt@gmail.com'; //'bombeirosSAP'                   //SMTP username
-	$mail->Password   = 'kjznjqeygdrrzbva'; //SMTP password
-	$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; //Enable implicit TLS encryption
-	$mail->Port       = 587;
+	// Server settings obtidos dinamicamente de variáveis de ambiente
+	$smtpHost = getenv('MAIL_HOST') ?: ($_ENV['MAIL_HOST'] ?? 'smtp.gmail.com');
+	$smtpPort = getenv('MAIL_PORT') ?: ($_ENV['MAIL_PORT'] ?? 587);
+	$smtpUser = getenv('MAIL_USERNAME') ?: ($_ENV['MAIL_USERNAME'] ?? '');
+	$smtpPass = getenv('MAIL_PASSWORD') ?: ($_ENV['MAIL_PASSWORD'] ?? '');
+	$fromEmail = getenv('MAIL_FROM_ADDRESS') ?: ($_ENV['MAIL_FROM_ADDRESS'] ?? $smtpUser);
+	$fromName = getenv('MAIL_FROM_NAME') ?: ($_ENV['MAIL_FROM_NAME'] ?? 'INDSAFE - Admin');
+
+	$mail->isSMTP();
+	$mail->Host       = $smtpHost;
+	$mail->SMTPAuth   = !empty($smtpUser);
+	$mail->Username   = $smtpUser;
+	$mail->Password   = $smtpPass;
+	$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+	$mail->Port       = (int) $smtpPort;
 	$mail->SMTPOptions = array(
 		'ssl' => array(
 			'verify_peer' => false,
@@ -30,8 +36,8 @@ try {
 		)
 	);
 
-	//Recipients
-	$mail->setFrom('sapcbmmt@gmail.com', 'Admin');
+	// Recipients
+	$mail->setFrom($fromEmail, $fromName);
 	$mail->addAddress($aux_email, $aux_nome);
 
 	//Content

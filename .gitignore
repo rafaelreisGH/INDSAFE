@@ -21,6 +21,9 @@ logs/
 *.swp
 *.swo
 
+# Configurações de agentes locais
+.agents/
+
 # Sistema operacional
 .DS_Store
 Thumbs.db
